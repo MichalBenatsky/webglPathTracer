@@ -19,8 +19,46 @@ function vertexShader() {
     uniform vec3 colorB; 
     varying vec3 vUv;
 
+    struct Ray
+    {
+      vec3 dir;
+      vec3 origin;
+    };
+
+    bool hit_sphere(vec3 center, float radius,  Ray r) 
+    {
+      vec3 oc = r.origin - center;
+
+      float a = dot(r.dir, r.dir);
+   
+      float b = 2.0 * dot(oc, r.dir);
+      float c = dot(oc, oc) - radius*radius;
+      float discriminant = b*b - 4.0*a*c;
+      return (discriminant > 0.0);
+    }
+
+    vec3 color(Ray r) {
+      if (hit_sphere(vec3(0,0,-1), 0.5, r))
+        return vec3(1, 0, 0);
+
+      vec3 unit_direction = r.dir;
+      float t = 0.5*(unit_direction.y + 1.0);
+      return (1.0-t)*vec3(1.0, 1.0, 1.0) + t*vec3(0.5, 0.7, 1.0);
+    }
+
     void main() {
-        gl_FragColor = vec4(vUv.xy,0.0, 1.0);
+      vec3 lower_left_corner = vec3(-2.0, -1.0, -1.0);
+      vec3 horizontal = vec3(4.0, 0.0, 0.0);
+      vec3 vertical = vec3(0.0, 2.0, 0.0);
+      vec3 origin = vec3(0.0, 0.0, 0.0);
+
+      vec3 dir = lower_left_corner + vUv.x*horizontal + vUv.y*vertical;
+      Ray r;
+      r.dir = normalize(dir);
+      r.origin = origin;
+      vec3 col = color(r);
+
+      gl_FragColor = vec4(col, 1.0);
     }
 `
 }
