@@ -25,21 +25,44 @@ function vertexShader() {
       vec3 origin;
     };
 
-    bool hit_sphere(vec3 center, float radius,  Ray r) 
+    struct HitRecord
+    {
+      float t;
+      vec3 p;
+      vec3 normal;
+    };
+
+
+
+    bool hitSphere(vec3 center, float radius, Ray r, out HitRecord rec) 
     {
       vec3 oc = r.origin - center;
-
       float a = dot(r.dir, r.dir);
-   
-      float b = 2.0 * dot(oc, r.dir);
+      float b = dot(oc, r.dir);
       float c = dot(oc, oc) - radius*radius;
-      float discriminant = b*b - 4.0*a*c;
-      return (discriminant > 0.0);
+      float discriminant = b*b - a*c;
+      if (discriminant > 0.0) {
+          float temp = (-b - sqrt(discriminant))/a;
+          rec.t = temp;
+          rec.p = r.origin + r.dir * rec.t;
+          rec.normal = (rec.p - center) / radius;
+          return true;
+      }
+      return false;
+    }
+
+    bool hitWorld(Ray r, out HitRecord rec)
+    {
+      bool hit = hitSphere(vec3(0,0,-1), 0.5, r, rec);
+      return hit;
     }
 
     vec3 color(Ray r) {
-      if (hit_sphere(vec3(0,0,-1), 0.5, r))
-        return vec3(1, 0, 0);
+      HitRecord rec;
+      if (hitWorld(r, rec))
+      {
+        return 0.5*vec3(rec.normal.x+1.0, rec.normal.y+1.0, rec.normal.z+1.0);
+      }
 
       vec3 unit_direction = r.dir;
       float t = 0.5*(unit_direction.y + 1.0);
