@@ -18,6 +18,8 @@ function vertexShader() {
     uniform vec3 colorA; 
     uniform vec3 colorB; 
     uniform float ratio;
+    uniform float corner;
+    
     varying vec3 vUv;
 
     struct Ray
@@ -97,7 +99,7 @@ function vertexShader() {
       vec3 lower_left_corner = vec3(-2.0, -1.0, -1.0);
       vec3 horizontal = vec3(4.0, 0.0, 0.0);
       vec3 vertical = vec3(0.0, 2.0, 0.0);
-      vec3 origin = vec3(0.0, 0.0, 0.0);
+      vec3 origin = vec3(corner, 0.0, 0.0);
 
       vec3 dir = lower_left_corner + vUv.x*horizontal + vUv.y*vertical;
       Ray r;
@@ -113,7 +115,8 @@ function vertexShader() {
 let uniforms = {
         colorB: {type: 'vec3', value: new THREE.Color(0xACB6E5)},
         colorA: {type: 'vec3', value: new THREE.Color(0xFF0000)},
-        ratio: {value: 0.5}
+        ratio: {value: 0.5},
+        corner: {value: -0.5}
 }
 
 var scene = new THREE.Scene();
@@ -128,7 +131,7 @@ var geometry = new THREE.Geometry();
 geometry.vertices= [new THREE.Vector3(-1,-1,0), new THREE.Vector3(3,-1,0), new THREE.Vector3(-1,3,0)]; 
 geometry.faces = [new THREE.Face3(0,1,2)];
 
-uniforms.ratio = window.innerWidth / window.innerHeight;
+uniforms.ratio.value = window.innerWidth / window.innerHeight;
 
 let material =  new THREE.ShaderMaterial({
     uniforms: uniforms,
@@ -141,9 +144,17 @@ scene.add( plane );
 
 camera.position.z = 5;
 
-function animate() {
-    requestAnimationFrame( animate );
-    renderer.render( scene, camera );
-    renderer.setClearColor(new THREE.Color( 0xff0000 ), 0);
+let oldTime = 0;
+function animate(timestamp) 
+{
+  let delta = timestamp - oldTime;
+  oldTime = timestamp
+
+  
+  plane.material.uniforms.corner.value = Math.sin(timestamp * .001) * 1.5;
+
+  renderer.render( scene, camera );
+  requestAnimationFrame( animate );
+
 }
-animate();
+requestAnimationFrame( animate );
