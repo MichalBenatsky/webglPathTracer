@@ -17,12 +17,19 @@ function vertexShader() {
     return `
     uniform vec3 colorA; 
     uniform vec3 colorB; 
+    uniform float ratio;
     varying vec3 vUv;
 
     struct Ray
     {
       vec3 dir;
       vec3 origin;
+    };
+
+    struct Sphere
+    {
+      vec3 center;
+      float radius;
     };
 
     struct HitRecord
@@ -32,20 +39,20 @@ function vertexShader() {
       vec3 normal;
     };
 
-
-
-    bool hitSphere(vec3 center, float radius, Ray r, out HitRecord rec) 
+    bool hitSphere(Sphere s, Ray r, out HitRecord rec) 
     {
-      vec3 oc = r.origin - center;
+      vec3 oc = r.origin - s.center;
       float a = dot(r.dir, r.dir);
       float b = dot(oc, r.dir);
-      float c = dot(oc, oc) - radius*radius;
+      float c = dot(oc, oc) - s.radius*s.radius;
       float discriminant = b*b - a*c;
       if (discriminant > 0.0) {
           float temp = (-b - sqrt(discriminant))/a;
+          if (temp < 0.0) 
+            return false;
           rec.t = temp;
           rec.p = r.origin + r.dir * rec.t;
-          rec.normal = (rec.p - center) / radius;
+          rec.normal = (rec.p - s.center) / s.radius;
           return true;
       }
       return false;
@@ -53,7 +60,24 @@ function vertexShader() {
 
     bool hitWorld(Ray r, out HitRecord rec)
     {
-      bool hit = hitSphere(vec3(0,0,-1), 0.5, r, rec);
+      const int objCnt = 2;
+      Sphere objects[objCnt];
+      objects[0] = Sphere(vec3(0.0, 0.0, -1.0), 0.5);
+      objects[1] = Sphere(vec3(0.0,-100.5,-1.0), 99.0);
+
+      bool hit = false;
+      rec.t = 1000000.0;
+      for (int i = 0; i < objCnt; ++i)
+      {
+        HitRecord thisHit;
+        bool wasHit = hitSphere(objects[i], r, thisHit);
+        if (wasHit && thisHit.t < rec.t)
+        {
+          hit = true;
+          rec = thisHit;
+        }
+      }
+
       return hit;
     }
 
@@ -88,37 +112,32 @@ function vertexShader() {
 
 let uniforms = {
         colorB: {type: 'vec3', value: new THREE.Color(0xACB6E5)},
-        colorA: {type: 'vec3', value: new THREE.Color(0xFF0000)}
+        colorA: {type: 'vec3', value: new THREE.Color(0xFF0000)},
+        ratio: {value: 0.5}
 }
 
 var scene = new THREE.Scene();
 var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 
 var renderer = new THREE.WebGLRenderer({alpha: true});
-renderer.setSize( window.innerWidth / 2, window.innerHeight / 2);
+renderer.setSize( window.innerWidth * .9, window.innerHeight * .9);
 
 document.body.appendChild( renderer.domElement );
 
-var geometry3 = new THREE.Geometry();
-geometry3.vertices= [new THREE.Vector3(-1,-1,0), new THREE.Vector3(3,-1,0), new THREE.Vector3(-1,3,0)]; 
-geometry3.faces = [new THREE.Face3(0,1,2)];
+var geometry = new THREE.Geometry();
+geometry.vertices= [new THREE.Vector3(-1,-1,0), new THREE.Vector3(3,-1,0), new THREE.Vector3(-1,3,0)]; 
+geometry.faces = [new THREE.Face3(0,1,2)];
 
-const width = 1;
-const height = 1;
-const widthSegments = 1;
-const heightSegments = 1;
-const geometry2 = new THREE.PlaneBufferGeometry(width, height, widthSegments, heightSegments);
-var geometry = new THREE.BoxGeometry();
+uniforms.ratio = window.innerWidth / window.innerHeight;
 
-let material2 =  new THREE.ShaderMaterial({
+let material =  new THREE.ShaderMaterial({
     uniforms: uniforms,
     fragmentShader: fragmentShader(),
     vertexShader: vertexShader(),
   })
 
-var material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
-var cube = new THREE.Mesh( geometry3, material2);
-scene.add( cube );
+var plane = new THREE.Mesh( geometry, material);
+scene.add( plane );
 
 camera.position.z = 5;
 
@@ -126,7 +145,5 @@ function animate() {
     requestAnimationFrame( animate );
     renderer.render( scene, camera );
     renderer.setClearColor(new THREE.Color( 0xff0000 ), 0);
-    //cube.rotation.x += 0.01;
-    cube.rotation.y += 0.01;
 }
 animate();
