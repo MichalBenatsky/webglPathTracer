@@ -65,7 +65,7 @@ function vertexShader() {
       const int objCnt = 2;
       Sphere objects[objCnt];
       objects[0] = Sphere(vec3(0.0, 0.0, -1.0), 0.5);
-      objects[1] = Sphere(vec3(0.0,-100.5,-1.0), 99.0);
+      objects[1] = Sphere(vec3(0.0,-100.5,-1.0), 100.0);
 
       bool hit = false;
       rec.t = 1000000.0;
@@ -83,16 +83,41 @@ function vertexShader() {
       return hit;
     }
 
+    vec2 hash2( vec2 p )
+    {
+      return fract(sin(vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))))*43758.5453);
+    }
+
+    vec3 randomPointOnSphere()
+    {
+      vec2 hash = hash2(vUv.xy);
+      vec3 p = vec3(hash, fract(hash.x+hash.y));
+      p = 2.0 * p - 1.0;
+      p *= 1.0 / sqrt(3.0); // savage? :)
+
+      return p;
+    }
+
     vec3 color(Ray r) {
-      HitRecord rec;
-      if (hitWorld(r, rec))
+
+      float lightDecay = 1.0;
+      for (int i = 0; i < 5; ++i)
       {
-        return 0.5*vec3(rec.normal.x+1.0, rec.normal.y+1.0, rec.normal.z+1.0);
+        HitRecord rec;
+        if (hitWorld(r, rec))
+        {
+          vec3 target = rec.p + rec.normal + randomPointOnSphere();
+          r.origin = rec.p;
+          r.dir = normalize(target - rec.p);
+          lightDecay *= 0.5;
+        }
+        else
+          continue;
       }
 
       vec3 unit_direction = r.dir;
       float t = 0.5*(unit_direction.y + 1.0);
-      return (1.0-t)*vec3(1.0, 1.0, 1.0) + t*vec3(0.5, 0.7, 1.0);
+      return lightDecay * ((1.0-t)*vec3(1.0, 1.0, 1.0) + t*vec3(0.5, 0.7, 1.0));
     }
 
     void main() {
@@ -106,6 +131,7 @@ function vertexShader() {
       r.dir = normalize(dir);
       r.origin = origin;
       vec3 col = color(r);
+      //col.rg = hash2(vUv.xy);
 
       gl_FragColor = vec4(col, 1.0);
     }
