@@ -32,6 +32,7 @@ function vertexShader() {
     {
       vec3 center;
       float radius;
+      vec3 color;
     };
 
     struct HitRecord
@@ -39,6 +40,7 @@ function vertexShader() {
       float t;
       vec3 p;
       vec3 normal;
+      vec3 albedo;
     };
 
     bool hitSphere(Sphere s, Ray r, out HitRecord rec) 
@@ -55,6 +57,7 @@ function vertexShader() {
           rec.t = temp;
           rec.p = r.origin + r.dir * rec.t;
           rec.normal = (rec.p - s.center) / s.radius;
+          rec.albedo = s.color;
           return true;
       }
       return false;
@@ -62,10 +65,11 @@ function vertexShader() {
 
     bool hitWorld(Ray r, out HitRecord rec)
     {
-      const int objCnt = 2;
+      const int objCnt = 3;
       Sphere objects[objCnt];
-      objects[0] = Sphere(vec3(0.0, 0.0, -1.0), 0.5);
-      objects[1] = Sphere(vec3(0.0,-100.5,-1.0), 100.0);
+      objects[0] = Sphere(vec3(0.0, 0.0, -1.0), 0.5, vec3(1., 1., 0.0));
+      objects[1] = Sphere(vec3(0.0,-100.5,-1.0), 100.0, vec3(1.0, 1.0, 1.0));
+      objects[2] = Sphere(vec3(sin(corner), 0, cos(corner) - 1.0), 0.2, vec3(1.0, 0.2, 0.0));
 
       bool hit = false;
       rec.t = 1000000.0;
@@ -88,9 +92,9 @@ function vertexShader() {
       return fract(sin(vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))))*43758.5453);
     }
 
-    vec3 randomPointOnSphere()
+    vec3 randomPointOnSphere(int it)
     {
-      vec2 hash = hash2(vUv.xy);
+      vec2 hash = hash2(vUv.xy + float(it) * 0.345);
       vec3 p = vec3(hash, fract(hash.x+hash.y));
       p = 2.0 * p - 1.0;
       p *= 1.0 / sqrt(3.0); // savage? :)
@@ -98,18 +102,18 @@ function vertexShader() {
       return p;
     }
 
-    vec3 color(Ray r) {
+    vec3 color(Ray r, int it) {
 
-      float lightDecay = 1.0;
+      vec3 lightDecay = vec3(1.0, 1.0, 1.0);
       for (int i = 0; i < 5; ++i)
       {
         HitRecord rec;
         if (hitWorld(r, rec))
         {
-          vec3 target = rec.p + rec.normal + randomPointOnSphere();
+          vec3 target = rec.p + rec.normal + randomPointOnSphere(it);
           r.origin = rec.p;
           r.dir = normalize(target - rec.p);
-          lightDecay *= 0.5;
+          lightDecay *= 0.65 * rec.albedo;
         }
         else
           continue;
@@ -121,17 +125,23 @@ function vertexShader() {
     }
 
     void main() {
-      vec3 lower_left_corner = vec3(-2.0, -1.0, -1.0);
-      vec3 horizontal = vec3(4.0, 0.0, 0.0);
+      vec3 lower_left_corner = vec3(-1.0 * ratio, -1.0, -1.0);
+      vec3 horizontal = vec3(2.0 * ratio, 0.0, 0.0);
       vec3 vertical = vec3(0.0, 2.0, 0.0);
-      vec3 origin = vec3(corner, 0.0, 0.0);
+      vec3 origin = vec3(0.0, 0.0, 1.0);
 
       vec3 dir = lower_left_corner + vUv.x*horizontal + vUv.y*vertical;
       Ray r;
       r.dir = normalize(dir);
       r.origin = origin;
-      vec3 col = color(r);
-      //col.rg = hash2(vUv.xy);
+
+      const int NUM_SAMPLES = 25;
+      vec3 col = vec3(0.0, 0.0, 0.0);
+      for (int i = 0; i < NUM_SAMPLES; ++i)
+      {
+        col += color(r, i);
+      }
+      col *= 1.0/float(NUM_SAMPLES);
 
       gl_FragColor = vec4(col, 1.0);
     }
