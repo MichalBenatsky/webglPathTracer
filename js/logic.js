@@ -69,7 +69,7 @@ function vertexShader() {
       Sphere objects[objCnt];
       objects[0] = Sphere(vec3(0.0, 0.0, -1.0), 0.5, vec3(1., 1., 0.0));
       objects[1] = Sphere(vec3(0.0,-100.5,-1.0), 100.0, vec3(1.0, 1.0, 1.0));
-      objects[2] = Sphere(vec3(sin(corner), 0, cos(corner) - 1.0), 0.5, vec3(1.0, 0.2, 0.0));
+      objects[2] = Sphere(vec3(sin(corner), -.1, cos(corner) - 1.0), 0.3, vec3(1.0, 0.2, 0.0));
 
       bool hit = false;
       rec.t = 1000000.0;
