@@ -69,7 +69,7 @@ function vertexShader() {
       Sphere objects[objCnt];
       objects[0] = Sphere(vec3(0.0, 0.0, -1.0), 0.5, vec3(1., 1., 0.0));
       objects[1] = Sphere(vec3(0.0,-100.5,-1.0), 100.0, vec3(1.0, 1.0, 1.0));
-      objects[2] = Sphere(vec3(sin(corner), 0, cos(corner) - 1.0), 0.2, vec3(1.0, 0.2, 0.0));
+      objects[2] = Sphere(vec3(sin(corner), 0, cos(corner) - 1.0), 0.5, vec3(1.0, 0.2, 0.0));
 
       bool hit = false;
       rec.t = 1000000.0;
@@ -95,9 +95,15 @@ function vertexShader() {
     vec3 randomPointOnSphere(int it)
     {
       vec2 hash = hash2(vUv.xy + float(it) * 0.345);
-      vec3 p = vec3(hash, fract(hash.x+hash.y));
-      p = 2.0 * p - 1.0;
-      p *= 1.0 / sqrt(3.0); // savage? :)
+      
+      float theta = hash.x * 3.14 * 2.0;
+      float phi = hash.y * 3.14;
+      float sinTheta = sin(theta);
+      float cosTheta = cos(theta);
+      float sinPhi = sin(phi);
+      float cosPhi = cos(phi);
+
+      vec3 p = vec3(sinPhi * cosTheta, cosPhi, sinPhi * sinTheta);
 
       return p;
     }
@@ -113,7 +119,7 @@ function vertexShader() {
           vec3 target = rec.p + rec.normal + randomPointOnSphere(it);
           r.origin = rec.p;
           r.dir = normalize(target - rec.p);
-          lightDecay *= 0.65 * rec.albedo;
+          lightDecay *= 0.6 * rec.albedo;
         }
         else
           continue;
@@ -187,7 +193,8 @@ function animate(timestamp)
   oldTime = timestamp
 
   
-  plane.material.uniforms.corner.value = Math.sin(timestamp * .001) * 1.5;
+  plane.material.uniforms.corner.value = Math.sin(timestamp * .0005) * 1.5;
+  //plane.material.uniforms.corner.value = 5.5;
 
   renderer.render( scene, camera );
   requestAnimationFrame( animate );
