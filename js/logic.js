@@ -97,7 +97,7 @@ function vertexShader() {
       vec2 hash = hash2(vUv.xy + float(it) * 0.345);
       
       float theta = hash.x * 3.14 * 2.0;
-      float phi = hash.y * 3.14;
+      float phi = acos(2.0 * hash.y - 1.0);
       float sinTheta = sin(theta);
       float cosTheta = cos(theta);
       float sinPhi = sin(phi);
