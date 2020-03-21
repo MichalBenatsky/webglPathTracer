@@ -172,7 +172,7 @@ function vertexShader() {
       r.dir = normalize(dir);
       r.origin = origin;
 
-      const int NUM_SAMPLES = 150;
+      const int NUM_SAMPLES = 15;
       vec3 col = vec3(0.0, 0.0, 0.0);
       for (int i = 0; i < NUM_SAMPLES; ++i)
       {
@@ -185,6 +185,20 @@ function vertexShader() {
 `
 }
 
+function fragmentShaderToScreen() {
+  return `
+  varying float numSamples;
+  uniform sampler2D myTexture;
+
+  void main() {
+
+    vec3 textureColor = vec3( texture2D(myTexture, vUv); 
+
+    gl_FragColor = vec4(col / numSaples, 1.0);
+  }
+  `
+}
+
 let uniforms = {
         colorB: {type: 'vec3', value: new THREE.Color(0xACB6E5)},
         colorA: {type: 'vec3', value: new THREE.Color(0xFF0000)},
@@ -192,11 +206,14 @@ let uniforms = {
         corner: {value: -0.5}
 }
 
+let screenWidth = window.innerWidth * .9;
+let screenHeight = window.innerHeight * .9;
+
 var scene = new THREE.Scene();
 var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 
 var renderer = new THREE.WebGLRenderer({alpha: true});
-renderer.setSize( window.innerWidth * .9, window.innerHeight * .9);
+renderer.setSize( screenWidth, screenHeight);
 
 document.body.appendChild( renderer.domElement );
 
@@ -215,7 +232,22 @@ let material =  new THREE.ShaderMaterial({
 var plane = new THREE.Mesh( geometry, material);
 scene.add( plane );
 
-camera.position.z = 5;
+// *****************************
+let scenePathTrace = new THREE.Scene();
+let bufferTexture = new THREE.WebGLRenderTarget( screenWidth, screenHeight, { minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter});
+
+let uniformsPathTrace = {
+  numSamples: {value: 1.0}
+}
+
+let pathTraceMaterial =  new THREE.ShaderMaterial({
+  uniforms: uniformsPathTrace,
+  fragmentShader: fragmentShader(),
+  vertexShader: fragmentShaderToScreen(),
+});
+
+let planePathTrace = new THREE.Mesh(geometry, material);
+scenePathTrace.add(planePathTrace);
 
 let oldTime = 0;
 function animate(timestamp) 
@@ -227,6 +259,10 @@ function animate(timestamp)
   plane.material.uniforms.corner.value = Math.sin(timestamp * .0005) * 1.5;
   //plane.material.uniforms.corner.value = 5.5;
 
+  renderer.setRenderTarget(bufferTexture);
+  renderer.render(scenePathTrace, camera);
+
+  renderer.setRenderTarget(null);
   renderer.render( scene, camera );
   requestAnimationFrame( animate );
 
