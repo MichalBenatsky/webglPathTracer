@@ -33,6 +33,7 @@ function vertexShader() {
       vec3 center;
       float radius;
       vec3 color;
+      int mat;
     };
 
     struct HitRecord
@@ -41,6 +42,7 @@ function vertexShader() {
       vec3 p;
       vec3 normal;
       vec3 albedo;
+      int mat;
     };
 
     bool hitSphere(Sphere s, Ray r, out HitRecord rec) 
@@ -58,6 +60,7 @@ function vertexShader() {
           rec.p = r.origin + r.dir * rec.t;
           rec.normal = (rec.p - s.center) / s.radius;
           rec.albedo = s.color;
+          rec.mat = s.mat;
           return true;
       }
       return false;
@@ -67,9 +70,9 @@ function vertexShader() {
     {
       const int objCnt = 3;
       Sphere objects[objCnt];
-      objects[0] = Sphere(vec3(0.0, 0.0, -1.0), 0.5, vec3(1., 1., 0.0));
-      objects[1] = Sphere(vec3(0.0,-100.5,-1.0), 100.0, vec3(1.0, 1.0, 1.0));
-      objects[2] = Sphere(vec3(sin(corner), -.1, cos(corner) - 1.0), 0.3, vec3(1.0, 0.2, 0.0));
+      objects[0] = Sphere(vec3(0.0, 0.0, -1.0), 0.5, vec3(1., 1., 0.0), 1);
+      objects[1] = Sphere(vec3(0.0,-100.5,-1.0), 100.0, vec3(1.0, 1.0, 1.0), 1);
+      objects[2] = Sphere(vec3(sin(corner), -.1, cos(corner) - 1.0), 0.3, vec3(1.0, 1.0, 1.0), 0);
 
       bool hit = false;
       rec.t = 1000000.0;
@@ -108,6 +111,24 @@ function vertexShader() {
       return p;
     }
 
+    Ray material(int mat, Ray r, HitRecord rec, int it)
+    {
+      Ray rOut;
+      rOut.origin = rec.p;
+      if (mat == 0)
+      {
+        rOut.dir = r.dir - 2.0 * dot(r.dir,rec.normal) * rec.normal;
+      }
+      else // else its difuse ... heh
+      {
+        vec3 target = rec.p + rec.normal + randomPointOnSphere(it);
+        rOut.dir = normalize(target - rec.p);
+      }
+      
+      rOut.origin += rOut.dir * 0.001;
+      return rOut;
+    }
+
     vec3 color(Ray r, int it) {
 
       vec3 lightDecay = vec3(1.0, 1.0, 1.0);
@@ -116,10 +137,9 @@ function vertexShader() {
         HitRecord rec;
         if (hitWorld(r, rec))
         {
-          vec3 target = rec.p + rec.normal + randomPointOnSphere(it);
-          r.origin = rec.p;
-          r.dir = normalize(target - rec.p);
-          lightDecay *= 0.6 * rec.albedo;
+          //vec3 target = rec.p + rec.normal + randomPointOnSphere(it);
+          r = material(rec.mat, r, rec, it);
+          lightDecay *= 0.7 * rec.albedo;
         }
         else
           continue;
