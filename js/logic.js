@@ -68,11 +68,12 @@ function vertexShader() {
 
     bool hitWorld(Ray r, out HitRecord rec)
     {
-      const int objCnt = 3;
+      const int objCnt = 4;
       Sphere objects[objCnt];
-      objects[0] = Sphere(vec3(0.0, 0.0, -1.0), 0.5, vec3(1., 1., 0.0), 1);
+      objects[0] = Sphere(vec3(0.0, 0.4, -1.0), 0.5, vec3(1., 1., 0.0), 1);
       objects[1] = Sphere(vec3(0.0,-100.5,-1.0), 100.0, vec3(1.0, 1.0, 1.0), 1);
-      objects[2] = Sphere(vec3(sin(corner), -.1, cos(corner) - 1.0), 0.3, vec3(1.0, 1.0, 1.0), 0);
+      objects[2] = Sphere(vec3(sin(corner), -.1, cos(corner) - 1.0), 0.4, vec3(1.0, 1.0, 1.0), 0);
+      objects[3] = Sphere(vec3(sin(corner+3.14*.3), 0.2, cos(corner+3.14 * .3) - 1.0), 0.15, vec3(1.0, 1.0, .0) * 10.0, 2);
 
       bool hit = false;
       rec.t = 1000000.0;
@@ -111,35 +112,45 @@ function vertexShader() {
       return p;
     }
 
-    Ray material(int mat, Ray r, HitRecord rec, int it)
+    Ray material(int mat, Ray r, HitRecord rec, int it, out bool stopTrace)
     {
+      stopTrace = false;
       Ray rOut;
       rOut.origin = rec.p;
       if (mat == 0)
       {
         rOut.dir = r.dir - 2.0 * dot(r.dir,rec.normal) * rec.normal;
       }
-      else // else its difuse ... heh
+      else if(mat == 1) // else its difuse ... heh
       {
         vec3 target = rec.p + rec.normal + randomPointOnSphere(it);
         rOut.dir = normalize(target - rec.p);
       }
+      else // Its light source
+      {
+        stopTrace = true;
+      }
       
-      rOut.origin += rOut.dir * 0.001;
+      //rOut.origin += rOut.dir * 0.001;
       return rOut;
     }
 
     vec3 color(Ray r, int it) {
 
       vec3 lightDecay = vec3(1.0, 1.0, 1.0);
-      for (int i = 0; i < 5; ++i)
+      for (int i = 0; i < 10; ++i)
       {
         HitRecord rec;
         if (hitWorld(r, rec))
         {
-          //vec3 target = rec.p + rec.normal + randomPointOnSphere(it);
-          r = material(rec.mat, r, rec, it);
-          lightDecay *= 0.7 * rec.albedo;
+          bool stopTrace;
+          r = material(rec.mat, r, rec, it, stopTrace);
+          if (stopTrace)
+          {
+            return lightDecay * rec.albedo;
+          }
+
+          lightDecay *= 0.65 * rec.albedo;
         }
         else
           continue;
@@ -161,7 +172,7 @@ function vertexShader() {
       r.dir = normalize(dir);
       r.origin = origin;
 
-      const int NUM_SAMPLES = 25;
+      const int NUM_SAMPLES = 150;
       vec3 col = vec3(0.0, 0.0, 0.0);
       for (int i = 0; i < NUM_SAMPLES; ++i)
       {
