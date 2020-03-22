@@ -73,13 +73,14 @@ function vertexShader() {
 
     bool hitWorld(Ray r, out HitRecord rec)
     {
-      const int objCnt = 5;
+      const int objCnt = 6;
       Sphere objects[objCnt];
       objects[0] = Sphere(vec3(0.0, 0.4, -1.0), .8, vec3(1., 1., 1.0), 1);
-      objects[1] = Sphere(vec3(0.0,-100.5,-1.0), 100.1, vec3(1.0, 1.0, 1.0), 1);
+      objects[1] = Sphere(vec3(0.0,-100.5,-1.0), 100.1, vec3(1.0, 1.0, 1.0) * .8, 1);
       objects[2] = Sphere(vec3(sin(corner), -.1, cos(corner) - 1.0), 0.3, vec3(1.0, 1.0, 0.0), 0);
       objects[3] = Sphere(vec3(1.0, 0.0, -0.5), 0.3, vec3(1.0, 1.0, 1.0), 0);
-      objects[4] = Sphere(vec3(-1.0, 0.7, -0.5), 0.3, vec3(1.0, 0.5, 0.0) * 5.0, 1);
+      objects[4] = Sphere(vec3(-1.0, 0.7, -0.5), 0.15, vec3(1.0, 1.0, 0.0) * 1.0, 1);
+      objects[5] = Sphere(vec3(1.0, 0.7, 0.0), 0.15, vec3(1, 0.0, 0.0) * 10.0, 2);
 
       
       //objects[2] = Sphere(vec3(0.7, 0.2, cos(corner+3.14 * .3) - 1.0), 0.15, vec3(1.0, 1.0, .0) * 2.0, 2);
@@ -262,6 +263,32 @@ renderer.autoClear = false;
 
 document.body.appendChild( renderer.domElement );
 
+let mouseDown = false;
+let mousePos = 0;
+let cameraPos = 0;
+let cameraChange = 0;
+renderer.domElement.addEventListener('mousedown', e => 
+{
+  mouseDown = true;
+  mousePos = new THREE.Vector2(e.clientX, e.clientY);
+});
+
+renderer.domElement.addEventListener('mousemove', e => 
+{
+  if (mouseDown == true) 
+  {
+    cameraChange = (mousePos.x - e.clientX) * .01;
+    mousePos = new THREE.Vector2(e.clientX, e.clientY); 
+  }
+});
+
+renderer.domElement.addEventListener('mouseup', e => 
+{
+  mouseDown = false;
+  cameraChange = 0;
+});
+
+
 let material =  new THREE.ShaderMaterial({
     uniforms: uniforms,
     vertexShader: vertexShader(),
@@ -295,22 +322,15 @@ function updateCamera(origin, lookat, vup, vfov, aspect, shaderValues)
   
   let horizontal = horizontalHalf.clone().multiplyScalar(2.0);
   let vertical = verticalHalf.clone().multiplyScalar(2.0);
-  
-  //let lower_left_corner = new THREE.Vector3(-1,-1,-1); 
-  let lower_left_corner = origin.clone().sub(horizontalHalf).sub(verticalHalf).sub(w);
- // lower_left_corner.lerp(new THREE.Vector3(-1,-1,-1), 0.5);
- //lower_left_corner.z = -1;
 
-  console.log(origin.clone().sub(lookat));
-  console.log({theta, half_height, half_width, horizontalHalf, verticalHalf, origin, lower_left_corner, horizontal, vertical, w, u, v});
+  let lower_left_corner = origin.clone().sub(horizontalHalf).sub(verticalHalf).sub(w);
 
   shaderValues.origin.value = origin;
   shaderValues.lowerLeftCorner.value = lower_left_corner;
   shaderValues.horizontal.value = horizontal;
   shaderValues.vertical.value = vertical;
 }
-//
-updateCamera(new THREE.Vector3(0,1,1),new THREE.Vector3(0,0.0,-1),new THREE.Vector3(0,1,0), 90.0, screenWidth / screenHeight, planePathTrace.material.uniforms);
+
 
 
 let iteration = 0;
@@ -326,8 +346,23 @@ function animate(timestamp)
   planePathTrace.material.uniforms.iteration.value = iteration;
   planePathTrace.material.uniforms.random.value = new THREE.Vector3(Math.random(), Math.random(), Math.random());
 
+  cameraPos = cameraPos + cameraChange;
+  let target = new THREE.Vector3(0,0.0,-1);
+  let dist = 2;
+  let cameraPosition = target.clone().add(new THREE.Vector3(Math.sin(cameraPos)*dist,1,Math.cos(cameraPos)*dist));
+  updateCamera(cameraPosition, target, new THREE.Vector3(0,1,0), 90.0, screenWidth / screenHeight, planePathTrace.material.uniforms);
+
+  console.log(cameraChange);
 
   renderer.setRenderTarget(bufferTexture);
+  //renderer.clear();
+  if (Math.abs(cameraChange) > 0.00001)
+  {
+    renderer.clear();
+    numSamples = 1;
+    cameraChange = 0;
+  }
+
   renderer.render(scenePathTrace, camera);
 
   iteration = iteration + 1;
