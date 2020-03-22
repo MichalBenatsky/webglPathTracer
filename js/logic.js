@@ -354,8 +354,8 @@ function animate(timestamp)
   cameraPos = cameraPos + cameraChange;
   let target = new THREE.Vector3(0,0.0,-1);
   let dist = 2;
-  let cameraPosition = target.clone().add(new THREE.Vector3(Math.sin(cameraPos)*dist,1,Math.cos(cameraPos)*dist));
-  updateCamera(cameraPosition, target, new THREE.Vector3(0,1,0), 90.0, screenWidth / screenHeight, planePathTrace.material.uniforms);
+  let cameraPosition = target.clone().add(new THREE.Vector3(Math.sin(cameraPos)*dist,0.3,Math.cos(cameraPos)*dist));
+  updateCamera(cameraPosition, target, new THREE.Vector3(0,1,0), 100.0, screenWidth / screenHeight, planePathTrace.material.uniforms);
 
   console.log(cameraChange);
 
