@@ -177,12 +177,7 @@ function vertexShader() {
     void main() {
       gl_FragColor = vec4(0.0,1.0, 1.0, 1.0);
 
-      //vec3 lowerLeftCorner = vec3(-1.0 * ratio, -1.0, -1.0);
-      //vec3 horizontal = vec3(2.0 * ratio, 0.0, 0.0);
-      //vec3 vertical = vec3(0.0, 2.0, 0.0);
-      //vec3 origin = vec3(0.0, 0.0, 1.0);
-
-      vec2 aaUVs = screenSizeInv * random.z + vUv.xy;
+      vec2 aaUVs = screenSizeInv * random.yz + vUv.xy;
 
       vec3 dir = (lowerLeftCorner + aaUVs.x*horizontal + aaUVs.y*vertical) - origin;
       Ray r;
