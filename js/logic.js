@@ -19,6 +19,7 @@ function vertexShader() {
     uniform vec3 colorB; 
     uniform float ratio;
     uniform float corner;
+    uniform int iteration;
     
     varying vec3 vUv;
 
@@ -178,7 +179,7 @@ function vertexShader() {
       vec3 col = vec3(0.0, 0.0, 0.0);
       for (int i = 0; i < NUM_SAMPLES; ++i)
       {
-        col += color(r, i);
+        col += color(r, i + iteration * NUM_SAMPLES);
       }
       col *= 1.0/float(NUM_SAMPLES);
 
@@ -200,7 +201,7 @@ function fragmentShaderToScreen() {
 
     vec3 textureColor = vec3(texture2D(map, vUv.xy).rgb); 
 
-    gl_FragColor = vec4(textureColor, 1.0);
+    gl_FragColor = vec4(textureColor / numSamples, 1.0);
   }
   `
 }
@@ -213,13 +214,14 @@ let screenWidth = window.innerWidth * .9;
 let screenHeight = window.innerHeight * .9;
 
 let scenePathTrace = new THREE.Scene();
-let bufferTexture = new THREE.WebGLRenderTarget( screenWidth, screenHeight, { minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter});
+let bufferTexture = new THREE.WebGLRenderTarget( screenWidth, screenHeight, { minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter, format: THREE.RGBAFormat ,type:THREE.FloatType });
 
 let uniformsPathTrace = {
   colorB: {type: 'vec3', value: new THREE.Color(0xACB6E5)},
   colorA: {type: 'vec3', value: new THREE.Color(0xFF0000)},
   ratio: {value: 0.5},
-  corner: {value: -0.5}
+  corner: {value: -0.5},
+  iteration: {value: 0}
 }
 
 uniformsPathTrace.ratio.value = screenWidth / screenHeight;
@@ -229,6 +231,7 @@ let pathTraceMaterial =  new THREE.ShaderMaterial({
   vertexShader: vertexShader(),
   fragmentShader: fragmentShader(),
 });
+pathTraceMaterial.blending = THREE.AdditiveBlending;
 
 let planePathTrace = new THREE.Mesh(geometry, pathTraceMaterial);
 scenePathTrace.add(planePathTrace);
@@ -239,12 +242,12 @@ texture = new THREE.TextureLoader().load( "../TerrainStreaming.png" );
 let uniforms = {
   map: { value: bufferTexture.texture } ,
   numSamples: {value: 1.0}
-  
 }
 
 let camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 let renderer = new THREE.WebGLRenderer({alpha: true});
 renderer.setSize( screenWidth, screenHeight);
+renderer.autoClear = false;
 
 document.body.appendChild( renderer.domElement );
 
@@ -260,21 +263,24 @@ scene.add( plane );
 
 // *****************************
 
-
+let iteration = 0;
+let numSamples = 0.0;
 let oldTime = 0;
 function animate(timestamp) 
 {
   let delta = timestamp - oldTime;
   oldTime = timestamp
-
   
-  planePathTrace.material.uniforms.corner.value = Math.sin(timestamp * .0005) * 1.5;
+  numSamples = numSamples + 1.0;
+  //planePathTrace.material.uniforms.corner.value = Math.sin(timestamp * .0005) * 1.5;
+  planePathTrace.material.uniforms.iteration.value = iteration;
 
   renderer.setRenderTarget(bufferTexture);
-  renderer.setClearColor ( new THREE.Color(0xFFB6E5), 1.0 );
-  renderer.clear();
   renderer.render(scenePathTrace, camera);
 
+  iteration = iteration + 1;
+
+  material.uniforms.numSamples.value = numSamples;
   renderer.setRenderTarget(null);
   renderer.render( scene, camera );
   requestAnimationFrame( animate );
