@@ -15,12 +15,15 @@ function vertexShader() {
 
   function fragmentShader() {
     return `
-    uniform vec3 colorA; 
-    uniform vec3 colorB; 
+    
+    uniform vec3 lowerLeftCorner;
+    uniform vec3 horizontal;
+    uniform vec3 vertical;
+    uniform vec3 origin;
+    uniform vec3 random;
     uniform float ratio;
     uniform float corner;
     uniform int iteration;
-    uniform vec3 random;
     
     varying vec3 vUv;
 
@@ -76,10 +79,10 @@ function vertexShader() {
       objects[1] = Sphere(vec3(0.0,-100.5,-1.0), 100.1, vec3(1.0, 1.0, 1.0), 1);
       objects[2] = Sphere(vec3(sin(corner), -.1, cos(corner) - 1.0), 0.3, vec3(1.0, 1.0, 0.0), 0);
       objects[3] = Sphere(vec3(1.0, 0.0, -0.5), 0.3, vec3(1.0, 1.0, 1.0), 0);
-      objects[4] = Sphere(vec3(-1.0, 0.7, -0.5), 0.3, vec3(1.0, 0.5, 0.0), 1);
+      objects[4] = Sphere(vec3(-1.0, 0.7, -0.5), 0.3, vec3(1.0, 0.5, 0.0) * 5.0, 1);
 
       
-      //objects[2] = Sphere(vec3(0.7, 0.2, cos(corner+3.14 * .3) - 1.0), 0.15, vec3(1.0, 1.0, .0) * 20.0, 2);
+      //objects[2] = Sphere(vec3(0.7, 0.2, cos(corner+3.14 * .3) - 1.0), 0.15, vec3(1.0, 1.0, .0) * 2.0, 2);
 
       bool hit = false;
       rec.t = 1000000.0;
@@ -171,12 +174,12 @@ function vertexShader() {
     void main() {
       gl_FragColor = vec4(0.0,1.0, 1.0, 1.0);
 
-      vec3 lower_left_corner = vec3(-1.0 * ratio, -1.0, -1.0);
-      vec3 horizontal = vec3(2.0 * ratio, 0.0, 0.0);
-      vec3 vertical = vec3(0.0, 2.0, 0.0);
-      vec3 origin = vec3(0.0, 0.0, 1.0);
+      //vec3 lowerLeftCorner = vec3(-1.0 * ratio, -1.0, -1.0);
+      //vec3 horizontal = vec3(2.0 * ratio, 0.0, 0.0);
+      //vec3 vertical = vec3(0.0, 2.0, 0.0);
+      //vec3 origin = vec3(0.0, 0.0, 1.0);
 
-      vec3 dir = lower_left_corner + vUv.x*horizontal + vUv.y*vertical;
+      vec3 dir = (lowerLeftCorner + vUv.x*horizontal + vUv.y*vertical) - origin;
       Ray r;
       r.dir = normalize(dir);
       r.origin = origin;
@@ -216,15 +219,17 @@ let geometry = new THREE.Geometry();
 geometry.vertices= [new THREE.Vector3(-1,-1,0), new THREE.Vector3(3,-1,0), new THREE.Vector3(-1,3,0)]; 
 geometry.faces = [new THREE.Face3(0,1,2)];
 
-let screenWidth = window.innerWidth * .9;
-let screenHeight = window.innerHeight * .9;
+let screenWidth = window.innerWidth * 1;
+let screenHeight = window.innerHeight * 1;
 
 let scenePathTrace = new THREE.Scene();
 let bufferTexture = new THREE.WebGLRenderTarget( screenWidth, screenHeight, { minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter, format: THREE.RGBAFormat ,type:THREE.FloatType });
 
 let uniformsPathTrace = {
-  colorB: {type: 'vec3', value: new THREE.Color(0xACB6E5)},
-  colorA: {type: 'vec3', value: new THREE.Color(0xFF0000)},
+  lowerLeftCorner: {type: 'vec3', value: new THREE.Vector3(-1, -1, -1)},
+  horizontal: {type: 'vec3', value: new THREE.Vector3(2, 0, 0)},
+  vertical: {type: 'vec3', value: new THREE.Vector3(0, 2, 0)},
+  origin: {type: 'vec3', value: new THREE.Vector3(0, 0, 1)},
   ratio: {value: 0.5},
   corner: {value: -0.5},
   iteration: {value: 0},
@@ -267,7 +272,46 @@ let plane = new THREE.Mesh( geometry, material);
 let scene = new THREE.Scene();
 scene.add( plane );
 
+
+// lowerLeftCorner: {type: 'vec3', value: new THREE.Vector3(-1, -1, -1)},
+// horizontal: {type: 'vec3', value: new THREE.Vector3(2, 0, 0)},
+// vertical: {type: 'vec3', value: new THREE.Vector3(0, 2, 0)},
+// origin: {type: 'vec3', value: new THREE.Vector3(0, 0, 1)},
 // *****************************
+function updateCamera(origin, lookat, vup, vfov, aspect, shaderValues) 
+{
+  const PI = 3.1415926;
+  // vfov is top to bottom in degrees
+  let u, v, w;
+  let theta = vfov*PI/180;
+  let half_height = Math.tan(theta/2);
+  let half_width = aspect * half_height;
+  w = (origin.clone().sub(lookat)).normalize();  // unit_vector(lookfrom - lookat);
+  u = (vup.clone().cross(w)).normalize(); //    unit_vector(cross(vup, w));
+  v = w.clone().cross(u); //  cross(w, u);
+  //let lower_left_corner = origin.clone().sub((u.clone().multiplyScalar(half_width)).sub(v.clone().multiplyScalar(half_height)).sub(w)); //     origin - half_width*u - half_height*v - w;
+  let horizontalHalf =  u.clone().multiplyScalar(half_width);
+  let verticalHalf = v.clone().multiplyScalar(half_height);
+  
+  let horizontal = horizontalHalf.clone().multiplyScalar(2.0);
+  let vertical = verticalHalf.clone().multiplyScalar(2.0);
+  
+  //let lower_left_corner = new THREE.Vector3(-1,-1,-1); 
+  let lower_left_corner = origin.clone().sub(horizontalHalf).sub(verticalHalf).sub(w);
+ // lower_left_corner.lerp(new THREE.Vector3(-1,-1,-1), 0.5);
+ //lower_left_corner.z = -1;
+
+  console.log(origin.clone().sub(lookat));
+  console.log({theta, half_height, half_width, horizontalHalf, verticalHalf, origin, lower_left_corner, horizontal, vertical, w, u, v});
+
+  shaderValues.origin.value = origin;
+  shaderValues.lowerLeftCorner.value = lower_left_corner;
+  shaderValues.horizontal.value = horizontal;
+  shaderValues.vertical.value = vertical;
+}
+//
+updateCamera(new THREE.Vector3(0,1,1),new THREE.Vector3(0,0.0,-1),new THREE.Vector3(0,1,0), 90.0, screenWidth / screenHeight, planePathTrace.material.uniforms);
+
 
 let iteration = 0;
 let numSamples = 0.0;
@@ -281,6 +325,7 @@ function animate(timestamp)
   //planePathTrace.material.uniforms.corner.value = Math.sin(timestamp * .0005) * 1.5;
   planePathTrace.material.uniforms.iteration.value = iteration;
   planePathTrace.material.uniforms.random.value = new THREE.Vector3(Math.random(), Math.random(), Math.random());
+
 
   renderer.setRenderTarget(bufferTexture);
   renderer.render(scenePathTrace, camera);
