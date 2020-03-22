@@ -20,6 +20,7 @@ function vertexShader() {
     uniform float ratio;
     uniform float corner;
     uniform int iteration;
+    uniform vec3 random;
     
     varying vec3 vUv;
 
@@ -74,7 +75,7 @@ function vertexShader() {
       objects[0] = Sphere(vec3(0.0, 0.4, -1.0), 0.5, vec3(1., 1., 0.0), 1);
       objects[1] = Sphere(vec3(0.0,-100.5,-1.0), 100.0, vec3(1.0, 1.0, 1.0), 1);
       objects[2] = Sphere(vec3(sin(corner), -.1, cos(corner) - 1.0), 0.4, vec3(1.0, 1.0, 1.0), 0);
-      objects[3] = Sphere(vec3(sin(corner+3.14*.3), 0.2, cos(corner+3.14 * .3) - 1.0), 0.15, vec3(1.0, 1.0, .0) * 10.0, 2);
+      objects[3] = Sphere(vec3(0.7, 0.2, cos(corner+3.14 * .3) - 1.0), 0.15, vec3(1.0, 1.0, .0) * 10.0, 2);
 
       bool hit = false;
       rec.t = 1000000.0;
@@ -92,6 +93,7 @@ function vertexShader() {
       return hit;
     }
 
+    float rand(float n){return fract(sin(n) * 43758.5453123);}
     vec2 hash2( vec2 p )
     {
       return fract(sin(vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))))*43758.5453);
@@ -99,7 +101,7 @@ function vertexShader() {
 
     vec3 randomPointOnSphere(int it)
     {
-      vec2 hash = hash2(vUv.xy + float(it) * 0.345);
+      vec2 hash = hash2(vUv.xy * random.xy);
       
       float theta = hash.x * 3.14 * 2.0;
       float phi = acos(2.0 * hash.y - 1.0);
@@ -175,7 +177,7 @@ function vertexShader() {
       r.dir = normalize(dir);
       r.origin = origin;
 
-      const int NUM_SAMPLES = 15;
+      const int NUM_SAMPLES = 1;
       vec3 col = vec3(0.0, 0.0, 0.0);
       for (int i = 0; i < NUM_SAMPLES; ++i)
       {
@@ -221,7 +223,8 @@ let uniformsPathTrace = {
   colorA: {type: 'vec3', value: new THREE.Color(0xFF0000)},
   ratio: {value: 0.5},
   corner: {value: -0.5},
-  iteration: {value: 0}
+  iteration: {value: 0},
+  random: {type: 'vec3', value: new THREE.Vector3(0, 0, 0)}
 }
 
 uniformsPathTrace.ratio.value = screenWidth / screenHeight;
@@ -238,7 +241,6 @@ scenePathTrace.add(planePathTrace);
 
 // **********
 
-texture = new THREE.TextureLoader().load( "../TerrainStreaming.png" );
 let uniforms = {
   map: { value: bufferTexture.texture } ,
   numSamples: {value: 1.0}
@@ -274,6 +276,7 @@ function animate(timestamp)
   numSamples = numSamples + 1.0;
   //planePathTrace.material.uniforms.corner.value = Math.sin(timestamp * .0005) * 1.5;
   planePathTrace.material.uniforms.iteration.value = iteration;
+  planePathTrace.material.uniforms.random.value = new THREE.Vector3(Math.random(), Math.random(), Math.random());
 
   renderer.setRenderTarget(bufferTexture);
   renderer.render(scenePathTrace, camera);
