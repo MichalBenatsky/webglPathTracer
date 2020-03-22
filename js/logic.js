@@ -21,6 +21,7 @@ function vertexShader() {
     uniform vec3 vertical;
     uniform vec3 origin;
     uniform vec3 random;
+    uniform vec2 screenSizeInv;
     uniform float ratio;
     uniform float corner;
     uniform int iteration;
@@ -73,14 +74,15 @@ function vertexShader() {
 
     bool hitWorld(Ray r, out HitRecord rec)
     {
-      const int objCnt = 6;
+      const int objCnt = 7;
       Sphere objects[objCnt];
-      objects[0] = Sphere(vec3(0.0, 0.4, -1.0), .8, vec3(1., 1., 1.0), 1);
-      objects[1] = Sphere(vec3(0.0,-100.5,-1.0), 100.1, vec3(1.0, 1.0, 1.0) * .8, 1);
+      objects[0] = Sphere(vec3(0.0, 0.4, -1.0), .8, vec3(0.5, 1.0, 1.0), 1);
+      objects[1] = Sphere(vec3(0.0,-100.5,-1.0), 100.1, vec3(1.0, 1.0, 1.0) * .7, 1);
       objects[2] = Sphere(vec3(sin(corner), -.1, cos(corner) - 1.0), 0.3, vec3(1.0, 1.0, 0.0), 0);
       objects[3] = Sphere(vec3(1.0, 0.0, -0.5), 0.3, vec3(1.0, 1.0, 1.0), 0);
-      objects[4] = Sphere(vec3(-1.0, 0.7, -0.5), 0.15, vec3(1.0, 1.0, 0.0) * 1.0, 1);
-      objects[5] = Sphere(vec3(1.0, 0.7, 0.0), 0.15, vec3(1, 0.0, 0.0) * 10.0, 2);
+      objects[4] = Sphere(vec3(-0.9, 0.7, -0.8), 0.15, vec3(1.0, 1.0, 0.0) * 1.0, 1);
+      objects[5] = Sphere(vec3(1.0, 0.7, 0.0), 0.1, vec3(1, 0.0, 0.0) * 30., 2);
+      objects[4] = Sphere(vec3(-1.0, 0.4, -1.0), .2, vec3(1., .5, 0.7), 1);
 
       
       //objects[2] = Sphere(vec3(0.7, 0.2, cos(corner+3.14 * .3) - 1.0), 0.15, vec3(1.0, 1.0, .0) * 2.0, 2);
@@ -180,7 +182,9 @@ function vertexShader() {
       //vec3 vertical = vec3(0.0, 2.0, 0.0);
       //vec3 origin = vec3(0.0, 0.0, 1.0);
 
-      vec3 dir = (lowerLeftCorner + vUv.x*horizontal + vUv.y*vertical) - origin;
+      vec2 aaUVs = screenSizeInv * random.z + vUv.xy;
+
+      vec3 dir = (lowerLeftCorner + aaUVs.x*horizontal + aaUVs.y*vertical) - origin;
       Ray r;
       r.dir = normalize(dir);
       r.origin = origin;
@@ -234,7 +238,8 @@ let uniformsPathTrace = {
   ratio: {value: 0.5},
   corner: {value: -0.5},
   iteration: {value: 0},
-  random: {type: 'vec3', value: new THREE.Vector3(0, 0, 0)}
+  random: {type: 'vec3', value: new THREE.Vector3(0, 0, 0)},
+  screenSizeInv: {type: 'vec2', value: new THREE.Vector2(1.0 / screenWidth, 1.0 / screenHeight)}
 }
 
 uniformsPathTrace.ratio.value = screenWidth / screenHeight;
