@@ -162,6 +162,8 @@ function vertexShader() {
     }
 
     void main() {
+      gl_FragColor = vec4(0.0,1.0, 1.0, 1.0);
+
       vec3 lower_left_corner = vec3(-1.0 * ratio, -1.0, -1.0);
       vec3 horizontal = vec3(2.0 * ratio, 0.0, 0.0);
       vec3 vertical = vec3(0.0, 2.0, 0.0);
@@ -187,67 +189,77 @@ function vertexShader() {
 
 function fragmentShaderToScreen() {
   return `
-  varying float numSamples;
-  uniform sampler2D myTexture;
+
+  varying vec3 vUv;
+
+  uniform sampler2D map;
+  uniform float numSamples;
+  
 
   void main() {
 
-    vec3 textureColor = vec3( texture2D(myTexture, vUv); 
+    vec3 textureColor = vec3(texture2D(map, vUv.xy).rgb); 
 
-    gl_FragColor = vec4(col / numSaples, 1.0);
+    gl_FragColor = vec4(textureColor, 1.0);
   }
   `
 }
 
-let uniforms = {
-        colorB: {type: 'vec3', value: new THREE.Color(0xACB6E5)},
-        colorA: {type: 'vec3', value: new THREE.Color(0xFF0000)},
-        ratio: {value: 0.5},
-        corner: {value: -0.5}
-}
+let geometry = new THREE.Geometry();
+geometry.vertices= [new THREE.Vector3(-1,-1,0), new THREE.Vector3(3,-1,0), new THREE.Vector3(-1,3,0)]; 
+geometry.faces = [new THREE.Face3(0,1,2)];
 
 let screenWidth = window.innerWidth * .9;
 let screenHeight = window.innerHeight * .9;
 
-var scene = new THREE.Scene();
-var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
-
-var renderer = new THREE.WebGLRenderer({alpha: true});
-renderer.setSize( screenWidth, screenHeight);
-
-document.body.appendChild( renderer.domElement );
-
-var geometry = new THREE.Geometry();
-geometry.vertices= [new THREE.Vector3(-1,-1,0), new THREE.Vector3(3,-1,0), new THREE.Vector3(-1,3,0)]; 
-geometry.faces = [new THREE.Face3(0,1,2)];
-
-uniforms.ratio.value = window.innerWidth / window.innerHeight;
-
-let material =  new THREE.ShaderMaterial({
-    uniforms: uniforms,
-    fragmentShader: fragmentShader(),
-    vertexShader: vertexShader(),
-  })
-
-var plane = new THREE.Mesh( geometry, material);
-scene.add( plane );
-
-// *****************************
 let scenePathTrace = new THREE.Scene();
 let bufferTexture = new THREE.WebGLRenderTarget( screenWidth, screenHeight, { minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter});
 
 let uniformsPathTrace = {
-  numSamples: {value: 1.0}
+  colorB: {type: 'vec3', value: new THREE.Color(0xACB6E5)},
+  colorA: {type: 'vec3', value: new THREE.Color(0xFF0000)},
+  ratio: {value: 0.5},
+  corner: {value: -0.5}
 }
+
+uniformsPathTrace.ratio.value = screenWidth / screenHeight;
 
 let pathTraceMaterial =  new THREE.ShaderMaterial({
   uniforms: uniformsPathTrace,
+  vertexShader: vertexShader(),
   fragmentShader: fragmentShader(),
-  vertexShader: fragmentShaderToScreen(),
 });
 
-let planePathTrace = new THREE.Mesh(geometry, material);
+let planePathTrace = new THREE.Mesh(geometry, pathTraceMaterial);
 scenePathTrace.add(planePathTrace);
+
+// **********
+
+texture = new THREE.TextureLoader().load( "../TerrainStreaming.png" );
+let uniforms = {
+  map: { value: bufferTexture.texture } ,
+  numSamples: {value: 1.0}
+  
+}
+
+let camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+let renderer = new THREE.WebGLRenderer({alpha: true});
+renderer.setSize( screenWidth, screenHeight);
+
+document.body.appendChild( renderer.domElement );
+
+let material =  new THREE.ShaderMaterial({
+    uniforms: uniforms,
+    vertexShader: vertexShader(),
+    fragmentShader: fragmentShaderToScreen(),
+  })
+
+let plane = new THREE.Mesh( geometry, material);
+let scene = new THREE.Scene();
+scene.add( plane );
+
+// *****************************
+
 
 let oldTime = 0;
 function animate(timestamp) 
@@ -256,10 +268,11 @@ function animate(timestamp)
   oldTime = timestamp
 
   
-  plane.material.uniforms.corner.value = Math.sin(timestamp * .0005) * 1.5;
-  //plane.material.uniforms.corner.value = 5.5;
+  planePathTrace.material.uniforms.corner.value = Math.sin(timestamp * .0005) * 1.5;
 
   renderer.setRenderTarget(bufferTexture);
+  renderer.setClearColor ( new THREE.Color(0xFFB6E5), 1.0 );
+  renderer.clear();
   renderer.render(scenePathTrace, camera);
 
   renderer.setRenderTarget(null);
